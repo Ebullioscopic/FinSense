@@ -434,12 +434,6 @@ This ensures fields like `document_id` and `dob` can interact, improving the mod
 
 ---
 
-## Conclusion
-
-The OCR Document Classifier efficiently extracts key information from various ID documents, producing structured JSON outputs. By leveraging advanced text recognition, multi-layer attention, and an MLP head, this model achieves state-of-the-art accuracy. The detailed technical setup ensures that the model can run on various platforms, with clear instructions for installation and execution.
-
----
-
 ## Contributors
 
 [<img src="https://github.com/Ebullioscopic.png" style="width: 60px; height: 60px; border-radius: 50%;" alt="Ebullioscopic GitHub"/><br /><sub></sub>](https://github.com/Ebullioscopic/FinSense)
