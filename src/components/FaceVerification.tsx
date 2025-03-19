@@ -71,7 +71,7 @@ export default function FaceVerification({ onVerificationComplete }: FaceVerific
             <>
               <video 
                 ref={videoRef} 
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
                 autoPlay 
                 playsInline 
                 muted

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import FaceVerification from '../components/FaceVerification';
 import LoanApplicationForm from '../components/LoanApplicationForm';
 import LoanApplicationResult from '../components/LoanApplicationResult';
+import DocumentScanner from '../components/DocumentScanner';
 
 // Import loan data
 import { homeLoanQuestions, personalLoanQuestions, businessLoanQuestions } from '../data/loan-questions';
@@ -48,6 +49,10 @@ export default function LoanApplicationV2() {
   const chunksRef = useRef<Blob[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [recordingTimer, setRecordingTimer] = useState(0);
+  const [documentVerificationStep, setDocumentVerificationStep] = useState<'aadhaar' | 'pan' | 'complete'>('aadhaar');
+  const [aadhaarNumber, setAadhaarNumber] = useState<string>('');
+  const [panNumber, setPanNumber] = useState<string>('');
+  
 
   useEffect(() => {
     setIsLoaded(true);
@@ -230,17 +235,34 @@ export default function LoanApplicationV2() {
   const startRecording = async () => {
     try {
       chunksRef.current = [];
+      
+      // Request camera access with appropriate settings
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: 1280, height: 720 }, 
+        video: { 
+          width: { ideal: 1280, max: 1280 },
+          height: { ideal: 720, max: 720 },
+          facingMode: 'user'
+        }, 
         audio: true 
       });
       
+      // Make sure the video element is properly set up with the stream
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        videoRef.current.muted = true; // Mute to prevent feedback
+        
+        // Make sure the video is visible before starting recording
+        await videoRef.current.play();
+        console.log("Video playback started - you should see yourself now");
       }
 
-      const mediaRecorder = new MediaRecorder(stream);
+      // Start recording after ensuring the stream is visible - no need for delay
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: navigator.userAgent.indexOf('Firefox') !== -1 
+          ? 'video/webm' // Firefox
+          : 'video/webm;codecs=vp9,opus' // Chrome and others
+      });
+      
       mediaRecorderRef.current = mediaRecorder;
       
       mediaRecorder.ondataavailable = (e) => {
@@ -254,18 +276,16 @@ export default function LoanApplicationV2() {
         const videoURL = URL.createObjectURL(blob);
         setRecordedVideo(videoURL);
         
-        // Create a name for the recording based on user info and loan type
+        // Create a name for the recording based on user info
         const userNamePart = userInfo?.fullName ? userInfo.fullName.replace(/\s+/g, '_').toLowerCase() : 'user';
         const loanTypePart = loanType ? loanType.replace('-', '_') : 'loan';
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const videoName = `${userNamePart}_${loanTypePart}_${timestamp}.mp4`;
         
         console.log(`Video recorded: ${videoName}`);
-        
-        // Stop all tracks on the stream
-        stream.getTracks().forEach(track => track.stop());
       };
       
+      // Start recording - keep camera preview visible during recording
       mediaRecorder.start();
       setIsRecording(true);
       
@@ -286,10 +306,11 @@ export default function LoanApplicationV2() {
       setIsRecording(false);
       setHasRecorded(true);
       
-      // Remove auto-transition to questions view
-      // setTimeout(() => {
-      //   setViewMode('questions');
-      // }, 2000);
+      // Also stop the tracks
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+      }
     }
   };
 
@@ -458,6 +479,19 @@ export default function LoanApplicationV2() {
     return () => clearInterval(interval);
   }, [isRecording]);
 
+  // Add a new function to handle document verification
+  const handleDocumentVerification = (success: boolean, documentType: 'aadhaar' | 'pan', documentNumber: string) => {
+    if (success) {
+      if (documentType === 'aadhaar') {
+        setAadhaarNumber(documentNumber);
+        setDocumentVerificationStep('pan');
+      } else {
+        setPanNumber(documentNumber);
+        setDocumentVerificationStep('complete');
+      }
+    }
+  };
+
   if (!loanType || !isLoaded) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>;
   }
@@ -514,6 +548,29 @@ export default function LoanApplicationV2() {
                   <p className="text-sm text-blue-700">
                     Identity verification helps protect your personal information and prevents fraudulent applications. 
                     Your face scan is encrypted and only used for verification purposes.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : documentVerificationStep !== 'complete' ? (
+            <div className="bg-white rounded-xl shadow-card p-8 max-w-3xl mx-auto">
+              <h1 className="text-2xl font-display font-bold text-scblue-dark mb-6">
+                Document Verification - {documentVerificationStep === 'aadhaar' ? 'Aadhaar Card' : 'PAN Card'}
+              </h1>
+              
+              <p className="text-secondary-700 mb-6">
+                Please scan your {documentVerificationStep === 'aadhaar' ? 'Aadhaar Card' : 'PAN Card'} to verify your identity.
+              </p>
+              
+              <DocumentScanner onVerificationComplete={handleDocumentVerification} />
+              
+              <div className="mt-8 border-t border-gray-200 pt-6">
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                  <h3 className="text-md font-medium text-blue-800 mb-2">Document Verification</h3>
+                  <p className="text-sm text-blue-700">
+                    {documentVerificationStep === 'aadhaar' 
+                      ? 'Your Aadhaar card details will be verified securely. This information is needed for KYC compliance.' 
+                      : 'Your PAN card is required for tax purposes and to complete your financial profile.'}
                   </p>
                 </div>
               </div>
@@ -614,10 +671,10 @@ export default function LoanApplicationV2() {
                     
                     <div className="bg-scblue-dark p-1 rounded-xl overflow-hidden shadow-md mb-6">
                       <div className="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden relative">
-                        {isRecording ? (
+                        {isRecording || (!hasRecorded && recordedVideo === null) ? (
                           <video 
                             ref={videoRef} 
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-contain"
                             autoPlay 
                             playsInline 
                             muted
@@ -625,7 +682,7 @@ export default function LoanApplicationV2() {
                         ) : hasRecorded && recordedVideo ? (
                           <video 
                             src={recordedVideo}
-                            className="w-full h-full object-cover" 
+                            className="w-full h-full object-contain" 
                             controls
                           />
                         ) : (
