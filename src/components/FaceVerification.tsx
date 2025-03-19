@@ -12,6 +12,8 @@ export default function FaceVerification({ onVerificationComplete }: FaceVerific
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+
+
   // Start the scanning process
   const startScan = async () => {
     try {
