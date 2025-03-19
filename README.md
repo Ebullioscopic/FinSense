@@ -438,3 +438,5 @@ This ensures fields like `document_id` and `dob` can interact, improving the mod
 
 [<img src="https://github.com/Ebullioscopic.png" style="width: 60px; height: 60px; border-radius: 50%;" alt="Ebullioscopic GitHub"/><br /><sub></sub>](https://github.com/Ebullioscopic/FinSense)
 [Hariharan Mudaliar](https://github.com/Ebullioscopic)
+[<img src="https://github.com/umeshgjh.png" style="width: 60px; height: 60px; border-radius: 50%;" alt="umeshgjh GitHub"/><br /><sub></sub>](https://github.com/umeshgjh)
+[Umesh G J H](https://github.com/umeshgjh)
